@@ -1300,6 +1300,8 @@ function setLang(lang) {
   const labelMap = {en:'EN',es:'ES',pt:'PT',fr:'FR',it:'IT',de:'DE',zh:'中文',ja:'日本語'};
   const lbl = document.getElementById('langPickerLabel');
   if (lbl) lbl.textContent = labelMap[lang] || lang.toUpperCase();
+  // Scroll to top so the language change is immediately visible
+  window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
 function toggleLangDropdown() {
