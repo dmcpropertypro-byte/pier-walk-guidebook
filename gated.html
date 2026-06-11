@@ -1248,6 +1248,91 @@ const CONTENT = {
   }
 };
 const API_BASE = "https://pier-walk-agent-stack.onrender.com";
+
+let pwcSession = '';
+let pwcPendingQ = '';
+try { pwcSession = sessionStorage.getItem('pwc_gb_session') || ''; } catch(e) {}
+function pwcSurface() { return (typeof IS_GATED !== 'undefined' && IS_GATED) ? 'guidebook_gated' : 'guidebook_guest'; }
+async function pwcLead(payload) {
+  payload.surface = pwcSurface();
+  const r = await fetch(API_BASE + '/api/sales-concierge/lead', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const d = await r.json();
+  if (d && d.sessionId) {
+    pwcSession = d.sessionId;
+    try { sessionStorage.setItem('pwc_gb_session', d.sessionId); } catch(e) {}
+  }
+  return d;
+}
+async function pwcEnsureSession() {
+  if (pwcSession) return pwcSession;
+  await pwcLead({ anonymous: true, firstName: (typeof guestName !== 'undefined' ? guestName : '') || '' });
+  return pwcSession;
+}
+async function pwcChatTurn(text) {
+  await pwcEnsureSession();
+  const call = async () => {
+    const r = await fetch(API_BASE + '/api/sales-concierge', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ sessionId: pwcSession, message: text })
+    });
+    return r.json();
+  };
+  let d = await call();
+  if (d && d.error === 'session_expired') {
+    pwcSession = ''; try { sessionStorage.removeItem('pwc_gb_session'); } catch(e) {}
+    await pwcEnsureSession();
+    d = await call();
+  }
+  return d;
+}
+function pwcShowEmailForm(lastQuestion) {
+  pwcPendingQ = lastQuestion || pwcPendingQ;
+  if (document.getElementById('pwc-email-row')) return;
+  const msgs = document.getElementById('chatMessages');
+  if (!msgs) return;
+  const row = document.createElement('div');
+  row.id = 'pwc-email-row';
+  row.style.cssText = 'display:flex;gap:6px;margin:8px 0;align-items:center';
+  row.innerHTML = '<input id="pwc-email-input" type="email" placeholder="Your reservation email" '
+    + 'style="flex:1;padding:9px 12px;border:1px solid #ccd6e0;border-radius:8px;font-size:16px">'
+    + '<button id="pwc-email-go" style="background:#f07818;color:#fff;border:none;border-radius:8px;'
+    + 'padding:9px 14px;font-weight:700;cursor:pointer">Go</button>';
+  msgs.appendChild(row);
+  msgs.scrollTop = msgs.scrollHeight;
+  document.getElementById('pwc-email-go').addEventListener('click', pwcSubmitEmail);
+  document.getElementById('pwc-email-input').addEventListener('keydown', function(ev) {
+    if (ev.key === 'Enter') { ev.preventDefault(); pwcSubmitEmail(); }
+  });
+}
+async function pwcSubmitEmail() {
+  const inp = document.getElementById('pwc-email-input');
+  const email = (inp && inp.value || '').trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { if (inp) inp.style.borderColor = '#b91c1c'; return; }
+  const btn = document.getElementById('pwc-email-go');
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    await pwcLead({ email: email, firstName: (typeof guestName !== 'undefined' ? guestName : '') || 'Guest',
+                    sessionId: pwcSession });
+    const row = document.getElementById('pwc-email-row');
+    if (row) row.remove();
+    if (pwcPendingQ) {
+      const q = pwcPendingQ; pwcPendingQ = '';
+      const typing = appendMsg('bot', '...'); typing.classList.add('typing');
+      const d = await pwcChatTurn(q);
+      typing.innerHTML = renderMarkdown(d.reply || 'All set! Ask me again and I\'ll check your reservation.');
+      typing.classList.remove('typing');
+      chatHistory.push({role:'assistant', content: d.reply || ''});
+    } else {
+      appendMsg('bot', 'Perfect, you\'re all set! What can I check for you?');
+    }
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Go'; }
+  }
+}
+
 const PIER_WALK_KB = "";
 const IS_GATED = true;
 const PROXY_SUBSCRIBE = "https://pier-walk-agent-stack.onrender.com/api/subscribe";
@@ -1366,8 +1451,14 @@ function closeChat() {
 }
 
 function renderMarkdown(text) {
+  // Markdown links [label](url) → tappable pill (concierge sends map/website links)
+  let html = text.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+    '<a href="$2" target="_blank" rel="noopener" style="display:inline-block;background:#e8f4fd;color:#0b5394;border:1px solid #b6d7f2;border-radius:999px;padding:2px 10px;margin:2px 2px 0 0;font-weight:600;text-decoration:none;font-size:13px">$1</a>');
+  // Bare URLs → plain tappable links (skip URLs already inside an href)
+  html = html.replace(/(^|[^"(>\w])(https?:\/\/[^\s<]+[^\s<.,)!?])/g,
+    '$1<a href="$2" target="_blank" rel="noopener" style="color:#0b5394;text-decoration:underline;word-break:break-all">$2</a>');
   // Convert **bold** to <strong>
-  let html = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   // Convert *italic* to <em>
   html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
   // Split into lines and process
@@ -1430,13 +1521,9 @@ async function sendMsg() {
   typing.classList.add('typing');
 
   try {
-    const res = await fetch(API_BASE + '/api/concierge', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ message: text, lang: currentLang, history: chatHistory.slice(-10), guestName: guestName, gated: IS_GATED })
-    });
-    const data = await res.json();
+    const data = await pwcChatTurn(text);
     const reply = data.reply || data.error || 'Sorry, I could not get a response right now.';
+    if (data && data.needsEmail) pwcShowEmailForm(text);
     typing.innerHTML = renderMarkdown(reply);
     typing.classList.remove('typing');
     chatHistory.push({role:'assistant', content: reply});
@@ -1474,6 +1561,9 @@ async function submitGate() {
     const data = await resp.json();
     alreadySubscribed = data.alreadySubscribed === true;
   } catch(e) { networkError = true; }
+  // Register the concierge chat session for this lead (identity for the
+  // chat brain + transcript). Mailchimp opt-in above stays the gate UX.
+  try { await pwcLead({ email: email, firstName: name }); } catch(e) {}
   // Re-enable button in all cases
   if (btn) { btn.disabled = false; btn.textContent = 'Access My Guidebook ✓'; }
   if (alreadySubscribed) {
