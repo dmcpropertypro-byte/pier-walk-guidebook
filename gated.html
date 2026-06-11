@@ -115,7 +115,7 @@ body{font-family:'Quicksand',Helvetica,Arial,sans-serif;background:#f0f7f8;color
 		<meta name="twitter:description" content="A secure backend API proxy that forwards guest chat messages to OpenAI GPT-4.1-mini using the Pier Walk property knowledge base, keeping the API key hidden from the browser.">
 		<meta name="twitter:image" content="https://raw.githubusercontent.com/dmcpropertypro-byte/pier-walk-guidebook/main/images/pool_sunset.jpg">
 		<meta name="twitter:image:width" content="1200">
-		<meta name="twitter:image:height" content="630"><link rel="canonical" href="https://dmcpropertypro-byte.github.io/pier-walk-guidebook/gated.html" /><script>if(/[?&]unlocked=1/.test(location.search))document.documentElement.classList.add('gb-unlocked');</script><style>html.gb-unlocked #gate-overlay{display:none!important}</style></head>
+		<meta name="twitter:image:height" content="630"><link rel="canonical" href="https://dmcpropertypro-byte.github.io/pier-walk-guidebook/gated.html" /><script>if(/[?&]unlocked=1/.test(location.search)){document.documentElement.classList.add('gb-unlocked');try{parent.postMessage({type:'pw-gate-unlocked'},'*')}catch(e){}}</script><style>html.gb-unlocked #gate-overlay{display:none!important}</style></head>
 <body>
 
 
@@ -1568,10 +1568,10 @@ async function submitGate() {
   if (btn) { btn.disabled = false; btn.textContent = 'Access My Guidebook ✓'; }
   if (alreadySubscribed) {
     // Already subscribed — open guidebook immediately
-    document.getElementById('gate-overlay').style.display = 'none';
+    document.getElementById('gate-overlay').style.display = 'none';try{parent.postMessage({type:'pw-gate-unlocked'},'*')}catch(e){}
   } else if (networkError) {
     // Network failure — open guidebook anyway (fail open) and silently subscribe
-    document.getElementById('gate-overlay').style.display = 'none';
+    document.getElementById('gate-overlay').style.display = 'none';try{parent.postMessage({type:'pw-gate-unlocked'},'*')}catch(e){}
   } else {
     // New subscriber — show 'check your email' confirmation screen
     document.getElementById('gate-form-view').style.display = 'none';
