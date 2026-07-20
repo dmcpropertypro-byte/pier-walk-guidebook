@@ -111,7 +111,10 @@
 
   /* podcast card */
   .podcard{display:flex; gap:20px; align-items:stretch; background:var(--card); border:1px solid var(--line);
-    border-radius:16px; padding:16px; box-shadow:var(--shadow)}
+    border-radius:16px; padding:16px; box-shadow:var(--shadow); text-decoration:none; color:var(--text);
+    transition:border-color .15s, transform .15s}
+  .podcard:hover{border-color:var(--amber); text-decoration:none; transform:translateY(-1px)}
+  .podcard:hover .thumb{filter:brightness(1.08)}
   @media (max-width:560px){ .podcard{flex-direction:column} }
   .podcard .thumb{position:relative; flex:none; width:132px; border-radius:12px; overflow:hidden;
     background:linear-gradient(150deg,#132234,#0B1420 70%); display:flex; align-items:center; justify-content:center; min-height:132px}
@@ -133,6 +136,9 @@
   .podcard blockquote{margin:0; font-size:clamp(18px,2.7vw,22px); line-height:1.42; color:var(--text); text-wrap:balance}
   .podcard .pattrib{margin-top:12px; font-size:13.5px; color:var(--muted)}
   .podcard .pshow{color:var(--amber)}
+  .podcard .plisten{margin-top:10px; font-size:13.5px; font-weight:700; color:var(--teal); display:flex; align-items:center; gap:6px}
+  .podcard:hover .plisten{color:var(--amber)}
+  .podcard .plisten .sarrow{font-size:14px}
 
   /* samples */
   .samples{display:grid; gap:12px}
@@ -346,7 +352,7 @@
 
     <section class="block">
       <h2>Podcast feature</h2>
-      <div class="podcard">
+      <a class="podcard" href="https://podcasts.apple.com/us/podcast/make-10-20-more-revenue-with-str-instead-of-long/id1504203321?i=1000576657246" target="_blank" rel="noopener">
         <div class="thumb" aria-hidden="true">
           <span class="ptri"></span>
           <span class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span>
@@ -355,8 +361,9 @@
         <div class="pbody">
           <blockquote class="serif">Right now, Airbnb has the relationship with the guests, not you… once you have direct bookings, you have control over your destiny.</blockquote>
           <div class="pattrib">Marco Cepeda · guest on<span class="pshow"> Into the Airbnb</span></div>
+          <div class="plisten">Listen on Apple Podcasts <span class="sarrow" aria-hidden="true">&#8599;</span></div>
         </div>
-      </div>
+      </a>
     </section>
 
     <section class="block">
