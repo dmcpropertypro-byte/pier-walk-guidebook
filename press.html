@@ -182,9 +182,17 @@
   /* proof */
   .stats{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:8px}
   @media (max-width:620px){ .stats{grid-template-columns:1fr 1fr} }
-  .stat{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px}
+  .stat{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; display:flex; flex-direction:column}
   .stat .n{font-size:26px; font-weight:800; color:var(--text); font-variant-numeric:tabular-nums; letter-spacing:-.01em}
   .stat .l{font-size:13px; color:var(--muted); margin-top:2px; line-height:1.35}
+  .stat-feature{background:linear-gradient(165deg,var(--surface-2),var(--surface)); border-color:var(--amber);
+    padding:22px 18px; box-shadow:var(--shadow); justify-content:center}
+  @media (min-width:621px){ .stat-feature{transform:scale(1.06); z-index:1} }
+  .stat-feature .n{font-size:36px; font-weight:900; letter-spacing:-.02em}
+  .stat-feature .l{font-size:14.5px; margin-top:4px}
+  .stat-feature .stat-link{display:inline-block; margin-top:12px; font-size:19px; font-weight:800; color:var(--amber); text-decoration:none}
+  .stat-feature .stat-link:hover{text-decoration:underline}
+  @media (max-width:620px){ .stat-feature{grid-column:1 / -1; transform:none} }
   .prooftext{color:var(--muted); font-size:15px; margin-top:14px}
 
   /* topics */
@@ -325,9 +333,13 @@
     <section class="block">
       <h2>Proof, not theory</h2>
       <div class="stats">
-        <div class="stat"><div class="n">20</div><div class="l">units run on his own AI stack</div></div>
-        <div class="stat"><div class="n">4 yrs</div><div class="l">operating Pier Walk on Deerfield Beach</div></div>
-        <div class="stat"><div class="n">1</div><div class="l">operator building &amp; running all of it</div></div>
+        <div class="stat"><div class="n">4 Years</div><div class="l">operating Pier Walk on Deerfield Beach</div></div>
+        <div class="stat stat-feature">
+          <div class="n">20 Units</div>
+          <div class="l">All running on an AI stack.</div>
+          <a class="stat-link" href="https://www.pierwalkdeerfieldbeach.com" target="_blank" rel="noopener">Pier Walk Website</a>
+        </div>
+        <div class="stat"><div class="n">1 Operator</div><div class="l">building &amp; running all of it</div></div>
       </div>
       <p class="prooftext">Everything Marco offers is something he runs in his own business every day — the guidebook concierge, the WiFi marketing portal, the automations, and the branded video. He's the operator and the builder, so the advice is field-tested, not borrowed.</p>
     </section>
