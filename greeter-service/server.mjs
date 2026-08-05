@@ -1,6 +1,8 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
+import { lookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 
 const env = process.env;
 const required = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'OPENAI_API_KEY', 'RESEND_API_KEY', 'FROM_EMAIL', 'GREETER_SIGNING_SECRET'];
@@ -11,6 +13,52 @@ const table = async (name, options = {}) => fetch(`${env.SUPABASE_URL}/rest/v1/$
 const previewToken = (claimId) => createHmac('sha256', env.GREETER_SIGNING_SECRET).update(`preview:${claimId}`).digest('hex');
 const readBody = async (req) => new Promise((resolve, reject) => { let raw = ''; req.on('data', c => raw += c); req.on('end', () => { try { resolve(JSON.parse(raw || '{}')); } catch { reject(new Error('Invalid JSON')); } }); });
 const escape = (s = '') => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+const privateAddress = (address) => {
+  if (address.includes(':')) return address === '::1' || address.startsWith('fc') || address.startsWith('fd') || address.startsWith('fe80:');
+  const [a, b] = address.split('.').map(Number);
+  return a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168);
+};
+async function safePublicUrl(value) {
+  const url = new URL(value);
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.hostname === 'localhost' || url.hostname.endsWith('.local')) throw new Error('Please use a public website URL.');
+  if (isIP(url.hostname)) { if (privateAddress(url.hostname)) throw new Error('Private network addresses cannot be crawled.'); }
+  else { const addresses = await lookup(url.hostname, { all: true }); if (!addresses.length || addresses.some(({ address }) => privateAddress(address))) throw new Error('This website cannot be crawled safely.'); }
+  return url;
+}
+const cleanHtml = (html) => html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<noscript[\s\S]*?<\/noscript>/gi, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ').replace(/&amp;/gi, '&').replace(/&quot;/gi, '"').replace(/&#39;/gi, "'").replace(/\s+/g, ' ').trim();
+const pageLinks = (html, base) => [...html.matchAll(/href\s*=\s*["']([^"'#]+)["']/gi)].map(([, href]) => { try { return new URL(href, base); } catch { return null; } }).filter(Boolean);
+async function fetchPublicPage(url, redirects = 0, expectedOrigin = null) {
+  if (redirects > 3) throw new Error('Too many website redirects.');
+  const checked = await safePublicUrl(url);
+  if (expectedOrigin && checked.origin !== expectedOrigin) throw new Error('Website crawl left the approved website.');
+  const response = await fetch(checked, { redirect: 'manual', signal: AbortSignal.timeout(12000), headers: { 'user-agent': 'TheNightShiftGreeterKB/1.0 (+https://thenightshift.onrender.com)' } });
+  if (response.status >= 300 && response.status < 400 && response.headers.get('location')) return fetchPublicPage(new URL(response.headers.get('location'), checked), redirects + 1, expectedOrigin);
+  if (!response.ok) throw new Error(`Could not read ${checked.hostname}.`);
+  if (!response.headers.get('content-type')?.includes('text/html')) throw new Error('The supplied URL must be a public HTML page.');
+  return { url: checked, html: (await response.text()).slice(0, 250000) };
+}
+async function crawlPublicKnowledge(sourceUrl) {
+  const first = await fetchPublicPage(sourceUrl);
+  const allowedOrigin = first.url.origin;
+  const queue = [first, ...pageLinks(first.html, first.url).filter((link) => link.origin === allowedOrigin && /faq|about|service|menu|contact|policy|guide|book|visit|location/i.test(link.pathname)).slice(0, 5).map((url) => ({ url }))];
+  const seen = new Set(); const pages = [];
+  for (const item of queue) {
+    if (pages.length >= 6) break;
+    const candidate = item.url.href;
+    if (seen.has(candidate)) continue;
+    seen.add(candidate);
+    try { const page = item.html ? item : await fetchPublicPage(item.url, 0, allowedOrigin); pages.push(`SOURCE: ${page.url.href}\n${cleanHtml(page.html).slice(0, 12000)}`); } catch { /* skip an unavailable public page */ }
+  }
+  if (!pages.length) throw new Error('No usable public website content was found.');
+  return pages.join('\n\n').slice(0, 42000);
+}
+async function buildPublicKnowledgeBase(sourceText) {
+  const response = await fetch('https://api.openai.com/v1/responses', { method: 'POST', headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}`, 'content-type': 'application/json' }, body: JSON.stringify({ model: 'gpt-5-mini', input: [{ role: 'system', content: 'Create a concise website-greeter knowledge base from ONLY the supplied public website text. Preserve facts, policies, hours, services, locations, contact details, and clear customer next steps. Do not invent prices, availability, guarantees, booking details, or policies. If a detail is not stated, omit it. Write fact-bounded short sections and common Q&A.' }, { role: 'user', content: sourceText }] }) });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error?.message || 'Could not build the public website knowledge base.');
+  return body.output_text || '';
+}
 
 async function sendPreviewEmail(claim) {
   const base = env.PUBLIC_BASE_URL || `https://${env.RENDER_EXTERNAL_HOSTNAME}`;
@@ -45,12 +93,23 @@ createServer(async (req, res) => {
   try {
     if (req.method === 'POST' && url.pathname === '/api/claims') {
       const data = await readBody(req);
-      const requiredFields = ['businessName', 'websiteUrl', 'contactEmail', 'humanEscalation', 'primaryCta', 'approvedContext'];
+      const requiredFields = ['businessName', 'websiteUrl', 'contactEmail', 'humanEscalation', 'primaryCta'];
       if (requiredFields.some(k => !String(data[k] || '').trim())) return json(res, 400, { error: 'Please complete all required fields.' });
       let parsedUrl;
       try { parsedUrl = new URL(data.websiteUrl.trim()); } catch { return json(res, 400, { error: 'Please enter a complete website URL, including https://.' }); }
       if (!['http:', 'https:'].includes(parsedUrl.protocol)) return json(res, 400, { error: 'Please enter a public http(s) website URL.' });
-      const claim = { id: randomUUID(), business_name: data.businessName.trim(), website_url: parsedUrl.href, contact_name: (data.contactName || '').trim(), contact_email: data.contactEmail.trim(), human_escalation: data.humanEscalation.trim(), primary_cta: data.primaryCta.trim(), public_source_url: (data.publicSourceUrl || '').trim(), approved_context: data.approvedContext.trim(), preview_token: randomUUID(), widget_token: randomUUID(), status: 'preview_ready' };
+      const suppliedContext = String(data.approvedContext || '').trim();
+      const sourceUrl = String(data.publicSourceUrl || data.websiteUrl || '').trim();
+      if (!suppliedContext && !data.crawlAuthorized) return json(res, 400, { error: 'Paste approved context or authorize a public website crawl.' });
+      let crawledContext = '';
+      if (data.crawlAuthorized) {
+        let source;
+        try { source = new URL(sourceUrl); } catch { return json(res, 400, { error: 'Please enter a complete public website URL for the crawl.' }); }
+        if (source.hostname.replace(/^www\./, '') !== parsedUrl.hostname.replace(/^www\./, '')) return json(res, 400, { error: 'The public source must be on the same website as your business URL.' });
+        crawledContext = await buildPublicKnowledgeBase(await crawlPublicKnowledge(sourceUrl));
+      }
+      const approvedContext = [suppliedContext, crawledContext].filter(Boolean).join('\n\nPUBLIC WEBSITE KNOWLEDGE BASE:\n');
+      const claim = { id: randomUUID(), business_name: data.businessName.trim(), website_url: parsedUrl.href, contact_name: (data.contactName || '').trim(), contact_email: data.contactEmail.trim(), human_escalation: data.humanEscalation.trim(), primary_cta: data.primaryCta.trim(), public_source_url: sourceUrl, approved_context: approvedContext, preview_token: randomUUID(), widget_token: randomUUID(), status: 'preview_ready' };
       const inserted = await table('greeter_claims', { method: 'POST', body: JSON.stringify(claim) });
       if (!inserted.ok) throw new Error('Unable to save the claim.');
       await sendPreviewEmail(claim);

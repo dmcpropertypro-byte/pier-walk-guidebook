@@ -25,8 +25,9 @@
         <div class="grid"><label>Your name<input name="contactName" autocomplete="name"></label><label>Email for your preview<input name="contactEmail" type="email" required autocomplete="email"></label></div>
         <div class="grid"><label>Human escalation email or phone<input name="humanEscalation" required placeholder="Who should receive questions your Greeter cannot answer?"></label><label>Primary next step<select name="primaryCta"><option>Request a quote</option><option>Call us</option><option>Book now</option><option>Order now</option><option>Send an inquiry</option></select></label></div>
         <label>Public guidebook, FAQ, or information hub <span class="helper">Optional—but useful if visitors already use a public page for answers.</span><input name="publicSourceUrl" type="url" placeholder="https://yourbusiness.com/faq"></label>
-        <label>Approved Business Context Pack<textarea name="approvedContext" required placeholder="Paste only approved public FAQs, services, policies, hours, and contact information."></textarea></label>
-        <p class="helper">Do not include passwords, payment data, government IDs, customer records, reservation details, or anything you would not publish publicly.</p>
+        <label class="consent"><input type="checkbox" name="crawlAuthorized"> I authorize a limited read of public pages on my website to create a private starter knowledge base. It will not access logins, payments, CRM, customer data, or private pages.</label>
+        <label>Optional approved notes not already on your public website<textarea name="approvedContext" placeholder="Paste only approved public FAQs, services, policies, hours, and contact information."></textarea></label>
+        <p class="helper">Use this for public facts that are missing or unclear on the site. Do not include passwords, payment data, government IDs, customer records, reservation details, or anything you would not publish publicly.</p>
         <label class="consent"><input type="checkbox" required>I confirm this is approved business information and I can authorize a private preview.</label>
         <button>Build my private preview</button><p id="result" class="status" role="status"></p>
       </form>
