@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: night-shift-free-greeter
+    runtime: node
+    rootDir: greeter-service
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: GREETER_SIGNING_SECRET
+        generateValue: true
+      - key: FROM_EMAIL
+        sync: false
+  - type: cron
+    name: night-shift-free-greeter-reports
+    runtime: node
+    rootDir: greeter-service
+    schedule: "0 14 * * 1"
+    buildCommand: npm install
+    startCommand: node report.mjs
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: FROM_EMAIL
+        sync: false
