@@ -15,7 +15,11 @@ const escape = (s = '') => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '
 async function sendPreviewEmail(claim) {
   const base = env.PUBLIC_BASE_URL || `https://${env.RENDER_EXTERNAL_HOSTNAME}`;
   const preview = `${base}/preview/${claim.id}?token=${claim.preview_token || previewToken(claim.id)}`;
-  await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' }, body: JSON.stringify({ from: env.FROM_EMAIL, to: [claim.contact_email], subject: `Your ${claim.business_name} Website Greeter preview`, html: `<p>Your private greeter preview is ready.</p><p><a href="${preview}">Test your preview</a></p><p>It is not live on your site. Review it first, then approve the embed from the preview page.</p>` }) });
+  const response = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' }, body: JSON.stringify({ from: env.FROM_EMAIL, to: [claim.contact_email], subject: `Your ${claim.business_name} Website Greeter preview`, html: `<p>Your private greeter preview is ready.</p><p><a href="${preview}">Test your preview</a></p><p>It is not live on your site. Review it first, then approve the embed from the preview page.</p>` }) });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    throw new Error(body.message || body.error?.message || 'Preview email could not be sent.');
+  }
 }
 
 async function askGreeter(claim, question) {
