@@ -123,7 +123,6 @@ body{font-family:'Quicksand',Helvetica,Arial,sans-serif;background:#f0f7f8;color
 		<meta name="twitter:image" content="https://raw.githubusercontent.com/dmcpropertypro-byte/pier-walk-guidebook/main/images/pool_sunset.jpg">
 		<meta name="twitter:image:width" content="1200">
 		<meta name="twitter:image:height" content="630"><link rel="canonical" href="https://dmcpropertypro-byte.github.io/pier-walk-guidebook/" />
-<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#003048">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -161,81 +160,63 @@ body{font-family:'Quicksand',Helvetica,Arial,sans-serif;background:#f0f7f8;color
 </style>
 <script>
 (function(){
-  var KEY='pw_install_dismissed_v1', deferred=null, inFrame=false;
-  try{ inFrame = window.top !== window.self; }catch(e){ inFrame = true; }
+  var KEY='pw_install_dismissed_v1';
   function installed(){
     return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
         || window.navigator.standalone === true;
   }
   function dismissed(){ try{ return localStorage.getItem(KEY)==='1'; }catch(e){ return false; } }
-  function isIOS(){ return /iphone|ipad|ipod/i.test(navigator.userAgent||''); }
+  var ua = navigator.userAgent || '';
+  var isIOS = /iphone|ipad|ipod/i.test(ua);
+  var isAndroid = /android/i.test(ua);
 
-  function build(mode){
+  // Instructional only, by design. "Add to Home Screen" always saves the
+  // TOP-LEVEL page (the OwnerRez site, with its nav + BOOK NOW) rather than
+  // this iframe, so we never pop out of the site — we just tell the guest how.
+  function build(){
     if(document.getElementById('pwa-bar')) return;
+    var vw = (window.innerWidth || 999);
+    var tiny = vw <= 380, narrow = vw < 420;
     var bar=document.createElement('div'); bar.id='pwa-bar';
     var img=document.createElement('img'); img.className='pwa-ico';
     img.src='icons/icon-192.png'; img.alt='';
-    var vw = (window.innerWidth || 999);
-    var narrow = vw < 420;
-    // <=380px (iPhone SE, many Androids) can't fit a title AND a second line
-    // inside the 64px cap — it clips. Those get one clear single line instead.
-    var tiny = vw <= 380;
     var tx=document.createElement('div'); tx.className='pwa-tx';
-    var b=document.createElement('b');
-    b.textContent = tiny ? '' : 'Keep the guidebook handy';
-    if(!tiny) tx.appendChild(b);
+    if(!tiny){
+      var b=document.createElement('b');
+      b.textContent='Keep Pier Walk on your phone';
+      tx.appendChild(b);
+    }
     var msg=document.createElement('span');
-    var btn=null;
-    if(mode==='frame'){
-      msg.textContent = tiny ? 'Open full screen to install'
-                 : narrow ? 'Open it full screen first.'
-                          : 'Open it full screen to add it to your home screen.';
-      btn=document.createElement('button'); btn.className='pwa-go'; btn.textContent='Open';
-      btn.onclick=function(){ try{ window.top.location.href=location.href; }
-                              catch(e){ window.open(location.href,'_blank'); } };
-    }else if(mode==='android'){
-      msg.textContent = tiny ? 'Add to your home screen'
-                 : narrow ? 'One tap, all week.'
-                          : 'Add it to your home screen for one-tap access all week.';
-      btn=document.createElement('button'); btn.className='pwa-go'; btn.textContent='Install';
-      btn.onclick=function(){
-        if(!deferred) return;
-        deferred.prompt();
-        deferred.userChoice.then(function(){ deferred=null; hide(true); });
-      };
-    }else{
+    if(isIOS){
       msg.textContent = tiny ? 'Tap Share → Add to Home Screen'
                  : narrow ? 'Tap Share, then "Add to Home Screen".'
                           : 'Tap the Share icon below, then "Add to Home Screen".';
+    }else{
+      msg.textContent = tiny ? 'Menu ⋮ → Add to Home screen'
+                 : narrow ? 'Tap ⋮, then "Add to Home screen".'
+                          : 'Open your browser menu ⋮, then "Add to Home screen".';
     }
-    tx.appendChild(msg); bar.appendChild(img); bar.appendChild(tx);
-    if(btn) bar.appendChild(btn);
+    tx.appendChild(msg);
+    bar.appendChild(img); bar.appendChild(tx);
     var x=document.createElement('button'); x.className='pwa-x';
     x.setAttribute('aria-label','Dismiss'); x.innerHTML='&times;';
     x.onclick=function(){ hide(true); };
     bar.appendChild(x);
     document.body.appendChild(bar);
-    setTimeout(function(){ bar.classList.add('show'); }, 900);
+    setTimeout(function(){ bar.classList.add('show'); }, 1200);
   }
   function hide(remember){
     var b=document.getElementById('pwa-bar'); if(b) b.classList.remove('show');
     if(remember){ try{ localStorage.setItem(KEY,'1'); }catch(e){} }
   }
 
-  window.addEventListener('beforeinstallprompt', function(e){
-    e.preventDefault(); deferred=e;
-    if(!installed() && !dismissed() && !inFrame) build('android');
-  });
-
   window.addEventListener('DOMContentLoaded', function(){
     if(installed() || dismissed()) return;
-    if(inFrame){ build('frame'); return; }
-    if(isIOS()) build('ios');   // Android waits for beforeinstallprompt
+    if(isIOS || isAndroid) build();   // phones only — desktop has no home screen
   });
 
-  // Online-first cache fallback. isSecureContext covers https AND localhost
-  // (checking protocol==='https:' alone wrongly excludes localhost, and Chrome
-  // won't offer install without an active service worker).
+  // Online-first cache fallback (no icon of its own). isSecureContext covers
+  // https AND localhost.
   if('serviceWorker' in navigator && window.isSecureContext){
     window.addEventListener('load', function(){
       navigator.serviceWorker.register('sw.js').catch(function(){});
