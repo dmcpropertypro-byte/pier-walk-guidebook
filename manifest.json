@@ -1,0 +1,32 @@
+{
+  "name": "Pier Walk Guest Guidebook",
+  "short_name": "Pier Walk",
+  "description": "Your Pier Walk on Deerfield Beach guest guidebook — WiFi, door codes, house rules, checkout, and local recommendations.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#003048",
+  "theme_color": "#003048",
+  "categories": ["travel", "lifestyle"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
