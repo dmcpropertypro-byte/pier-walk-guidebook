@@ -1344,6 +1344,16 @@ const API_BASE = "https://pier-walk-agent-stack.onrender.com";
 function pwcCardsOpts() { return { apiBase: API_BASE, onSend: function (t) { var i = document.getElementById('chatInput'); if (!i) return; i.value = t; sendMsg(); } }; }
 const PWC_EMBEDDED_PHONE = (function () { try { return window.self !== window.top && (window.innerWidth <= 640 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)); } catch (e) { return true; } })();
 (function () { try { if (PWC_EMBEDDED_PHONE) { var f = document.getElementById('chatFab'); if (f) f.classList.add('pwc-top'); } } catch (e) {} })();
+// The OwnerRez page hosts a floating "Ask Anything" button over this frame; it tells us it exists (so we hide our own
+// in-frame button) and, on desktop, asks us to open the chat in place (phones pop out full screen from the parent).
+window.addEventListener('message', function (e) {
+  try {
+    if (!/^https:\/\/(www\.)?pierwalkdeerfieldbeach\.com$/.test(e.origin)) return;
+    var t = e.data && e.data.type;
+    if (t === 'pw-launcher-ready') { var fab = document.getElementById('chatFab'); if (fab) fab.style.display = 'none'; }
+    if (t === 'pw-open-chat' && !PWC_EMBEDDED_PHONE) openChat();
+  } catch (err) {}
+});
 function pwcStartCards(tries) {
   tries = tries || 0;
   if (!window.PWCards) { if (tries < 8) setTimeout(function () { pwcStartCards(tries + 1); }, 500); return; }
