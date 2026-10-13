@@ -1256,6 +1256,16 @@ const CONTENT = {
   }
 };
 const API_BASE = "https://pier-walk-agent-stack.onrender.com";
+(function () { try { var s = document.createElement('script'); s.src = API_BASE + '/widget/cards.js'; s.async = true; document.head.appendChild(s); } catch (e) {} })();
+function pwcCardsOpts() { return { apiBase: API_BASE, onSend: function (t) { var i = document.getElementById('chatInput'); if (!i) return; i.value = t; sendMsg(); } }; }
+function pwcShowCards(d) {
+  try {
+    if (!window.PWCards || !d) return;
+    var box = document.getElementById('chatMessages');
+    if (d.cards && d.cards.length) PWCards.render(d.cards, box, pwcCardsOpts());
+    PWCards.quick(d.quickReplies || [], box, pwcCardsOpts());
+  } catch (e) {}
+}
 
 let pwcSession = '';
 let pwcPendingQ = '';
@@ -1284,7 +1294,7 @@ async function pwcChatTurn(text) {
   const call = async () => {
     const r = await fetch(API_BASE + '/api/sales-concierge', {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ sessionId: pwcSession, message: text })
+      body: JSON.stringify({ sessionId: pwcSession, message: text, cards: true })
     });
     return r.json();
   };
@@ -1333,6 +1343,7 @@ async function pwcSubmitEmail() {
       typing.innerHTML = renderMarkdown(d.reply || 'All set! Ask me again and I\'ll check your reservation.');
       typing.classList.remove('typing');
       chatHistory.push({role:'assistant', content: d.reply || ''});
+      pwcShowCards(d);
     } else {
       appendMsg('bot', 'Perfect, you\'re all set! What can I check for you?');
     }
@@ -1523,6 +1534,7 @@ async function sendMsg() {
   if (!text) return;
   input.value = '';
   appendMsg('user', text);
+  if (window.PWCards) PWCards.clearQuick();
   chatHistory.push({role:'user', content: text});
 
   const typing = appendMsg('bot', '...');
@@ -1535,6 +1547,7 @@ async function sendMsg() {
     typing.innerHTML = renderMarkdown(reply);
     typing.classList.remove('typing');
     chatHistory.push({role:'assistant', content: reply});
+    pwcShowCards(data);
   } catch(e) {
     typing.textContent = 'Sorry, I could not connect right now. Please try again.';
     typing.classList.remove('typing');
