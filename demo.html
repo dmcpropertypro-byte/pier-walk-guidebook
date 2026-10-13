@@ -75,11 +75,15 @@ body{font-family:'Quicksand',Helvetica,Arial,sans-serif;background:#f0f7f8;color
   .chat-panel{top:auto;left:auto;width:400px;height:600px;bottom:80px;right:18px;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.18)}
 }
 .chat-panel.open{display:flex}
+.chat-panel{overscroll-behavior:contain}
+body.chat-open{overflow:hidden}
+/* Inside the OwnerRez page on a phone the frame's bottom is often off-screen, so the launcher sits at the TOP of the frame */
+.chat-fab.pwc-top{top:58px;bottom:auto;right:10px;padding:9px 14px;font-size:13px}
 .chat-header{background:var(--teal);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-radius:16px 16px 0 0;flex-shrink:0}
 .chat-header-text h3{font-size:1rem;margin-bottom:2px}
 .chat-header-text p{font-size:.8rem;opacity:.85}
 .chat-close{background:none;border:none;color:#fff;font-size:22px;cursor:pointer;padding:0 4px;line-height:1}
-.chat-messages{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.chat-messages{flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:14px;display:flex;flex-direction:column;gap:10px}
 .msg{max-width:82%;padding:10px 14px;border-radius:16px;font-size:.9rem;line-height:1.5;word-break:break-word}
 .msg.bot{background:var(--light);color:#2a2a2a;align-self:flex-start;border-bottom-left-radius:4px}
 .msg.user{background:var(--teal);color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
@@ -1258,6 +1262,15 @@ const CONTENT = {
 const API_BASE = "https://pier-walk-agent-stack.onrender.com";
 (function () { try { var s = document.createElement('script'); s.src = API_BASE + '/widget/cards.js'; s.async = true; document.head.appendChild(s); } catch (e) {} })();
 function pwcCardsOpts() { return { apiBase: API_BASE, onSend: function (t) { var i = document.getElementById('chatInput'); if (!i) return; i.value = t; sendMsg(); } }; }
+const PWC_EMBEDDED_PHONE = (function () { try { return window.self !== window.top && (window.innerWidth <= 640 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)); } catch (e) { return true; } })();
+(function () { try { if (PWC_EMBEDDED_PHONE) { var f = document.getElementById('chatFab'); if (f) f.classList.add('pwc-top'); } } catch (e) {} })();
+function pwcStartCards(tries) {
+  tries = tries || 0;
+  if (!window.PWCards) { if (tries < 8) setTimeout(function () { pwcStartCards(tries + 1); }, 500); return; }
+  var box = document.getElementById('chatMessages');
+  PWCards.render([{ kind: 'contact', title: 'Talk to Bailey', sub: 'Virtual assistant · answers calls & texts 24/7', phone: '+17543458645', email: 'contact@pierwalkdeerfieldbeach.com' }], box, pwcCardsOpts());
+  PWCards.quick((typeof IS_GATED !== 'undefined' && IS_GATED) ? ['Check availability', 'Pet-friendly stays', 'Things to do nearby'] : ['WiFi help', 'Check-out steps', 'Things to do nearby'], box, pwcCardsOpts());
+}
 function pwcShowCards(d) {
   try {
     if (!window.PWCards || !d) return;
@@ -1453,7 +1466,14 @@ function showSection(id) {
 }
 
 function openChat() {
+  if (PWC_EMBEDDED_PHONE) {
+    // Inside the OwnerRez page on a phone: open the chat as its own full-screen page (floats + scrolls properly)
+    var popped = null;
+    try { popped = window.open(location.origin + location.pathname + '?openchat=1', '_blank'); } catch (e) {}
+    if (popped) return;
+  }
   document.getElementById('chatPanel').classList.add('open');
+  document.body.classList.add('chat-open');
   if (!chatGreeted) {
     chatGreeted = true;
     const greeting = CONTENT[currentLang].chat_greeting;
@@ -1461,12 +1481,18 @@ function openChat() {
       ? greeting.replace('Welcome to', 'Welcome, ' + guestName + ', to').replace('Bienvenue', 'Bienvenue, ' + guestName + ',').replace('Bienvenido', 'Bienvenido, ' + guestName + ',').replace('Bem-vindo', 'Bem-vindo, ' + guestName + ',').replace('Benvenuto', 'Benvenuto, ' + guestName + ',').replace('Willkommen', 'Willkommen, ' + guestName + ',').replace('ようこそ', guestName + 'さん、ようこそ').replace('欢迎来到', '欢迎, ' + guestName + ', 来到')
       : greeting;
     appendMsg('bot', personalised);
+    pwcStartCards();
   }
   setTimeout(() => document.getElementById('chatInput').focus(), 200);
 }
 
 function closeChat() {
   document.getElementById('chatPanel').classList.remove('open');
+  document.body.classList.remove('chat-open');
+}
+// Popped-out chat (from the phone embed): open straight into the chat
+if (/[?&]openchat=1/.test(location.search) && window.self === window.top) {
+  window.addEventListener('load', function () { setTimeout(openChat, 300); });
 }
 
 function renderMarkdown(text) {
