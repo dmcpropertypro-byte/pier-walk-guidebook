@@ -188,7 +188,7 @@ body.chat-open{overflow:hidden}
 <div class="chat-panel" id="chatPanel">
   <div class="chat-header">
     <div class="chat-header-text">
-      <h3 id="chatTitle">Pier Walk AI Concierge</h3>
+      <h3 id="chatTitle">PW Virtual Concierge</h3>
       <p id="chatSubtitle">Ask me anything about your stay!</p>
     </div>
     <button class="chat-close" onclick="closeChat()">✕</button>
@@ -244,8 +244,8 @@ const CONTENT = {
       "faq"
     ],
     "chat_placeholder": "Ask me anything about your stay...",
-    "chat_greeting": "Welcome to Pier Walk on Deerfield Beach! 🌴 I'm your AI concierge. Ask me anything about the property, local restaurants, activities, or getting here. I can answer in any language!",
-    "chat_title": "Pier Walk AI Concierge",
+    "chat_greeting": "Welcome to Pier Walk on Deerfield Beach! 🌴 I'm your PW Virtual Concierge. Ask me anything about the property, local restaurants, activities, or getting here. I can answer in any language!",
+    "chat_title": "PW Virtual Concierge",
     "chat_subtitle": "Ask me anything about your stay!",
     "hero_title": "Pier Walk Guest Guidebook",
     "hero_sub": "Deerfield Beach Island · Your home away from home",
@@ -1278,7 +1278,7 @@ function pwcStartCards(tries) {
   tries = tries || 0;
   if (!window.PWCards) { if (tries < 8) setTimeout(function () { pwcStartCards(tries + 1); }, 500); return; }
   var box = document.getElementById('chatMessages');
-  PWCards.render([{ kind: 'contact', title: 'Talk to Bailey', sub: 'Virtual assistant · answers calls & texts 24/7', phone: '+17543458645', email: 'contact@pierwalkdeerfieldbeach.com' }], box, pwcCardsOpts());
+  PWCards.render([{ kind: 'contact', title: 'Talk to Bailey', sub: 'PW Virtual Concierge · answers calls & texts 24/7', phone: '+17543458645', email: 'contact@pierwalkdeerfieldbeach.com' }], box, pwcCardsOpts());
   PWCards.quick((typeof IS_GATED !== 'undefined' && IS_GATED) ? ['Check availability', 'Pet-friendly stays', 'Things to do nearby'] : ['WiFi help', 'Check-out steps', 'Things to do nearby'], box, pwcCardsOpts());
 }
 function pwcShowCards(d) {
